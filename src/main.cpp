@@ -2,9 +2,12 @@
 // I2C debugger - logs all I2C devices connected to ESP32
 #include <Wire.h>
 #include <Arduino.h>  // 🔁 Required in PlatformIO!
+#include "RTClib.h"  // Adafruit's RTClib
+
+
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Wire.begin(21, 22);  // ESP32 I2C pins
   Serial.println("I2C Scanner");
 
@@ -20,6 +23,8 @@ void setup() {
 }
 
 void loop() {}
+
+// I2C Debugger End
 
 
 
