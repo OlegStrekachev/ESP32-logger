@@ -4,66 +4,38 @@
 #include <WiFi.h>
 #include "time.h"
 
+
+// Class that allows physical connection between DS3231 over I2C wire.
 RTC_DS3231 rtc;
 
-// NTP configuration
-const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 0;          // adjust for your timezone
-const int daylightOffset_sec = 0;
 
 void syncRTCWithNTP() {
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
   struct tm timeinfo;
   int attempts = 0;
   const int maxAttempts = 20;
 
   while (!getLocalTime(&timeinfo) && attempts < maxAttempts) {
+    Serial.print(".");       // Visual feedback
+    Serial.flush();
     delay(500);
     attempts++;
   }
 
   if (attempts >= maxAttempts) {
-    Serial.println("⚠️ Failed to sync time from NTP after retries");
+    Serial.println("\n⚠️ Failed to sync time from NTP after retries");
     return;
   }
 
-  rtc.adjust(DateTime(
-    timeinfo.tm_year + 1900,
-    timeinfo.tm_mon + 1,
-    timeinfo.tm_mday,
-    timeinfo.tm_hour,
-    timeinfo.tm_min,
-    timeinfo.tm_sec
-  ));
+  // Get current UNIX time after successful NTP sync
+  time_t now;
+  time(&now);   // now = seconds since Jan 1, 1970
 
-  Serial.printf("✅ RTC synced to: %04d-%02d-%02d %02d:%02d:%02d\n",
-                timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
-                timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  rtc.adjust(DateTime((uint32_t)now));  // ✅ Direct UNIX time sync to DS3231
+  
+  Serial.printf("\n✅ RTC synced to UNIX time: %ld\n", now);
 }
 
-void initRTC() {
-  // 🔧 Always specify pins for ESP32
-  Wire.begin(21, 22);
-
-  if (!rtc.begin()) {
-    Serial.println("❌ Couldn't find DS3231 RTC");
-    while (true);  // Fatal error: halt
-  }
-
-  if (rtc.lostPower()) {
-    Serial.println("⚠️ RTC lost power — syncing with NTP...");
-
-    initWiFi();          // Use external Wi-Fi module
-    delay(1000);         // Allow Wi-Fi to settle
-    syncRTCWithNTP();
-    WiFi.disconnect(true); // Optional: turn off Wi-Fi to save power
-  } else {
-    Serial.println("✅ RTC is running and time appears valid.");
-  }
-}
-
+// ✅ Completely separate, outside of syncRTCWithNTP():
 DateTime getTimestamp() {
-  // Note: lostPower() just tells us about historical validity
-  return rtc.now();
+  return rtc.now();   // ✅ Fetch the current time
 }

@@ -3,8 +3,7 @@
 
 #include <RTClib.h>
 
-void initRTC();
 void syncRTCWithNTP();
-DateTime getTimestamp();
+DateTime getTimestamp();  // ✅ You NEED this if dht.cpp calls getTimestamp()
 
 #endif

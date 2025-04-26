@@ -10,6 +10,8 @@
 
 DHT dht(DHTPIN, DHTTYPE);
 
+DateTime getTimestamp();  // Add the declaration of the getTimestamp function
+ 
 void initDHT() {
   dht.begin();
 }
@@ -34,3 +36,5 @@ void printDHTValues() {
     Serial.println("⚠️ Failed to read from DHT sensor");
   }
 }
+
+
