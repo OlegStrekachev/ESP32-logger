@@ -51,10 +51,13 @@ void handleData() {
   }
 
   String json = "[";
+  int numLogs = next / LOG_SIZE;
+  int logsToSend = min(5, numLogs);  // 🔥 Only send available logs (max 5)
+
   int addr = next - LOG_SIZE;
   if (addr < 0) addr = EEPROM_SIZE - LOG_SIZE;
 
-  for (int i = 0; i < 5; i++) {  // Try to send last 5 logs
+  for (int i = 0; i < logsToSend; i++) {
     if (addr < 0) addr = EEPROM_SIZE - LOG_SIZE;
 
     LogEntry entry;
@@ -70,7 +73,7 @@ void handleData() {
             dt.hour() - 7 < 0 ? dt.hour() + 17 : dt.hour() - 7,
             dt.minute(), dt.second());
 
-    if (i > 0) json += ",";  // Add comma between entries
+    if (i > 0) json += ",";
     json += "{";
     json += "\"time\":\"" + String(buffer) + "\",";
     json += "\"temperature\":" + String(entry.temperature, 1) + ",";
@@ -84,6 +87,7 @@ void handleData() {
   json += "]";
   server.send(200, "application/json; charset=UTF-8", json);
 }
+
 
 void startWebServer() {
   server.on("/", handleRoot);

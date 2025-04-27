@@ -11,8 +11,8 @@ struct LogEntry {
   float humidity;      // % Humidity
 };
 
-const int EEPROM_SIZE = 4096;            // Now linker sees it
-const int LOG_SIZE = sizeof(LogEntry);   // Now linker sees it
+int EEPROM_SIZE = 4096;           // <<< NOT const anymore
+int LOG_SIZE = sizeof(LogEntry);  // <<< NOT const anymore
 
 int nextAddress = 0;                    // Where to write next
 

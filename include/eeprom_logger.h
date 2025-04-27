@@ -9,8 +9,8 @@ struct LogEntry {
   float humidity;
 };
 
-extern const int EEPROM_SIZE;   // Correct
-extern const int LOG_SIZE;      // Correct
+extern int EEPROM_SIZE;   // Correct
+extern int LOG_SIZE;      // Correct
 
 
 bool initEEPROMLogger();
