@@ -1,109 +1,117 @@
-# Overview
+# ESP32 Weather Logger 🌡️
 
-This project uses an **ESP32 microcontroller** to read environmental data from a **DHT11 temperature and humidity sensor** and log that data into a **DAOKAI AT24C256 EEPROM chip** using the **I2C protocol**.
+This project uses an **ESP32 microcontroller** to read environmental data from a **DHT11 temperature and humidity sensor** and log it into a **DAOKAI AT24C256 EEPROM chip** over the **I2C protocol**.
 
-If you log **every minute**, you’ll get **~45 hours** of storage before it fills up.
+The ESP32 also serves a **local web dashboard** (Bootstrap 5 styled) for real-time data visualization.
 
-## **Parts List:**
+If you log **every minute**, you get approximately **45 hours** of storage before EEPROM wraps around.
 
-- **[[ESP 32]] Dev Board**
+---
+
+## 📦 Parts List
+
+- **ESP32 Dev Board**
 - **DHT11 Temperature & Humidity Sensor**
 - **AT24C256 EEPROM Module**
-- **Breadboard and jumper wires**
-- **DS3231 RTC Module**
-  - Responsible for maintaining consistent timestamp data logging when wi-fi connection is not available or system has no power.
+- **DS3231 RTC Module** (Real-Time Clock)
+- **Breadboard and Jumper Wires**
+- **USB Cable and Computer** (for flashing and monitoring)
 
-## **Project Structure**
+---
 
-```
+## 🛠️ Project Structure
+
+```plaintext
 your-project-folder/
-├── include/              ← Header files (.h) — declarations
-│   ├── dht.h             ← initDHT(), printDHTValues()
-│   ├── rtc.h             ← initRTC(), syncRTCWithNTP(), getTimestamp()
-│   ├── wifi.h            ← initWiFi()
-│   └── eeprom.h          ← initEEPROM(), writeData(), readData() (if used)
+├── include/
+│   ├── dht.h             ← DHT sensor initialization and reading
+│   ├── rtc.h             ← RTC/NTP synchronization and timestamp functions
+│   ├── wifi.h            ← Wi-Fi connection setup
+│   ├── eeprom_logger.h   ← EEPROM reading and writing
+│   └── web_server.h      ← Webserver endpoints
 │
-├── lib/                  ← Optional: for 3rd-party libraries (not used here)
+├── src/
+│   ├── main.cpp          ← Project entry point: initializes everything
+│   ├── dht.cpp           ← DHT11 sensor logic
+│   ├── rtc.cpp           ← RTC + NTP logic
+│   ├── wifi.cpp          ← Wi-Fi logic
+│   ├── eeprom_logger.cpp ← EEPROM memory logger
+│   ├── web_server.cpp    ← Web server logic
 │
-├── src/                  ← Your actual source code
-│   ├── main.cpp          ← The main entry point: calls initXXX(), loop logic
-│   ├── dht.cpp           ← Reads from DHT11 sensor and prints/logs
-│   ├── rtc.cpp           ← Handles DS3231 + NTP sync
-│   ├── wifi.cpp          ← Connects to WiFi
-│   ├── eeprom.cpp        ← EEPROM storage functions (optional/coming soon)
+├── platformio.ini        ← PlatformIO configuration file
 │
-├── platformio.ini        ← PlatformIO config file
+└── README.md             ← This file
+```
+
+## Logic Flow
+
+```plaintext
+ESP32 Boot
+  ↓
+Connect to Wi-Fi
+  ↓
+Initialize RTC → If RTC lost power → Sync to NTP
+  ↓
+Initialize EEPROM
+  ↓
+Start Web Server (Local Browser Access)
+  ↓
+Every 1 Minute
+  ↓
+  Read DHT11 → Save Temperature, Humidity, Timestamp into EEPROM
+  ↓
+Web Dashboard (HTML + JavaScript)
+  ↓
+Request [GET /data] → Fetch Last 5 Entries → Update Table
 
 ```
 
-| src/main.cpp   | Entry point. Calls `initDHT()`, `initRTC()`, `printDHTValues()` etc.   |
-| -------------- | ---------------------------------------------------------------------- |
-| dht.cpp/h      | Encapsulates DHT logic → keeps `main.cpp` clean and modular            |
-| rtc.cpp/h      | Handles DS3231 startup, NTP sync, timestamp retrieval                  |
-| wifi.cpp/h     | Manages Wi-Fi connection, retries, and status                          |
-| eeprom.cpp/h   | For storing and retrieving sensor data or timestamps                   |
-| platformio.ini | Tells PlatformIO what board, framework, libraries, and settings to use |
+## 🌐 How the Web Dashboard Works
 
-**secrets.h**
+### On Page Load:
 
-- A private header file where you store **sensitive credentials**.
-- It uses **C preprocessor macros** via `#define`
-- Text replacement at **compile time**
+- ESP32 serves a simple Bootstrap page.
+- Browser immediately sends a request to `/data`.
+- The last **5 logged sensor readings** are retrieved from **EEPROM** and displayed.
 
-## Logic
+### Auto Refresh:
 
-```
-ESP32 Boot → WiFi Connect → Sensor Init → EEPROM Init → WebServer Start
-              ↓
-           Every 1 min → Read DHT11 → Save to EEPROM
-              ↓
-    Browser → [GET /] → Web Page (HTML + Bootstrap)
-              ↓
-    Browser → [GET /data] → Last 5 LogEntries → JSON → Update Table
+- Every **5 seconds**, the browser fetches the **latest log entry**.
+- New entries appear at the **top**; older entries **shift downward**.
+- A maximum of **10 entries** are shown at once (oldest entries are deleted dynamically).
 
-```
+---
 
-```
-ESP32
-  ├── Wi-Fi connected to NTP server
-  ├── I2C bus communicating with RTC DS3231 at address 0x68
-  ├── (Optionally) EEPROM memory chip at 0x57 available
-  └── RTC clock synchronized with internet time
+## 💾 EEPROM Usage and Data Recovery
 
-```
+- The **EEPROM (AT24C256)** stores `LogEntry` structs:
+  - **timestamp** (Unix time),
+  - **temperature** (Celsius),
+  - **humidity** (% Humidity).
+- If the EEPROM becomes full, it **automatically wraps** to the beginning, overwriting the oldest data.
+- Logs are **persistent** (permanent) until manually erased.
 
-```
-[ESP32]
- └── EEPROM with sensor logs
-      ↓
-[Wi-Fi Network]
-      ↓
-[Node.js Server with API endpoints]
- └── Stores data in
-[SQL Database (e.g. MySQL, PostgreSQL)]
-	 ↓
-[Frontend Bootstrap web Interface]
+---
 
+### 📋 Data Extraction
 
-```
+You can recover **all stored data** (not just the last 5 entries) by:
 
-```CPP
-#include <WiFi.h>
-#include <HTTPClient.h>
+- Scanning the EEPROM from address **`0x00`** to the end (**`0x0FFF`**).
+- Reconstructing **LogEntry** structs manually (timestamp, temperature, humidity).
+- Parsing timestamps into **human-readable format**.
 
-HTTPClient http;
-http.begin("http://<your-server-ip>:3000/upload");
-http.addHeader("Content-Type", "application/json");
+> ✅ **Timestamps are stored as Unix Time**, making conversion easy across all programming languages.
 
-String json = "{\"temp\":23.5,\"hum\":50.1,\"timestamp\":1712773456}";
-int httpResponseCode = http.POST(json);
-http.end();
+## Visual Diagram
 
-```
-
-Edge cases
-
-- EEPROM fails
-- EEPROM is full
-
-[Go to introduction](#overview)
+          +------------------------+
+          |        ESP32            |
+          |                        3.3V ---+---- VCC (DHT11)
+          |                                +---- VCC (EEPROM)
+          |                                +---- VCC (RTC DS3231)
+          |                        GND ----+---- GND (DHT11, EEPROM, RTC)
+          |                        GPIO 13 ---- DATA (DHT11 Sensor)
+          |                        GPIO 21 ---- SDA  (EEPROM + RTC)
+          |                        GPIO 22 ---- SCL  (EEPROM + RTC)
+          +------------------------+
