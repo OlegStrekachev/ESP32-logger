@@ -106,5 +106,4 @@ Edge cases
 - EEPROM fails
 - EEPROM is full
 
-[Go to introduction] (#overview)
-ss
+[Go to introduction](#overview)
