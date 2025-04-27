@@ -3,15 +3,14 @@
 #include <DHT.h>
 #include <DHT_U.h>
 #include "dht.h"
-#include "rtc.h"  // 🔁 Include RTC module to get timestamp
+#include "rtc.h"      // To fetch timestamp from RTC
+#include "timezone.h" // To print Mountain Time timestamp
 
 #define DHTPIN 13
 #define DHTTYPE DHT11
 
 DHT dht(DHTPIN, DHTTYPE);
 
-DateTime getTimestamp();  // Add the declaration of the getTimestamp function
- 
 void initDHT() {
   dht.begin();
 }
@@ -20,21 +19,14 @@ void printDHTValues() {
   float temp = dht.readTemperature();
   float hum = dht.readHumidity();
 
-   if (!isnan(temp) && !isnan(hum)) {
-    DateTime now = getTimestamp();  // 🔁 Get current timestamp from DS3231
+  if (!isnan(temp) && !isnan(hum)) {
+    DateTime now = getTimestamp();   // Get current UTC timestamp from RTC
 
-    Serial.printf("[%04d-%02d-%02d %02d:%02d:%02d] ",
-                  now.year(), now.month(), now.day(),
-                  now.hour(), now.minute(), now.second());
+    printLocalTimestamp(now);         // Print timestamp adjusted to Mountain Time
+    Serial.printf("🌡 Temp: %.1f °C | 💧 Humidity: %.1f %%\n", temp, hum);
 
-    Serial.print("🌡 Temp: ");
-    Serial.print(temp);
-    Serial.print(" °C  |  💧 Humidity: ");
-    Serial.print(hum);
-    Serial.println(" %");
+    // 🔥 Here you can ALSO call saveToEEPROM(now, temp, hum); later
   } else {
     Serial.println("⚠️ Failed to read from DHT sensor");
   }
 }
-
-

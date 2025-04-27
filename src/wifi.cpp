@@ -6,62 +6,56 @@
 const char* ssid = WIFI_SSID;          // SSID loaded from secrets.h
 const char* password = WIFI_PASS;      // Password loaded from secrets.h
 
-// NTP settings (pure UTC time, no timezone shift)
-const long gmtOffset_sec = 0;          // Offset from UTC (0 means UTC)
-const int daylightOffset_sec = 0;      // Daylight saving adjustment (0 means no DST)
-const char* ntpServer = "pool.ntp.org"; // NTP server to fetch time from
+const long gmtOffset_sec = 0;           // Offset from UTC (0 = UTC time)
+const int daylightOffset_sec = 0;       // Daylight saving adjustment
+const char* ntpServer = "pool.ntp.org"; // NTP server to fetch time
 
 void initWiFi() {
-  WiFi.begin(ssid, password);          // Start connecting to Wi-Fi network
   Serial.print("Connecting to WiFi");
+  WiFi.begin(ssid, password);
 
-  int retries = 0;                     // Initialize Wi-Fi connection attempt counter
-  const int maxRetries = 20;            // Maximum number of retries before giving up
+  const int maxRetries = 20;  
+  int retries = 0;
 
-  // Try connecting to Wi-Fi until connected or retries exhausted
   while (WiFi.status() != WL_CONNECTED && retries < maxRetries) {
-    delay(500);                        // Wait 500ms between connection attempts
-    Serial.print(".");                 // Print a dot for visual feedback
-    retries++;                         // Increase retry counter
+    Serial.print(".");
+    delay(500);
+    retries++;
   }
 
-  // Check if connected after loop
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println(" Connected!");      // Connected to Wi-Fi successfully
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());     // Print the device's local IP address
-  } else {
-    Serial.println(" Failed to connect to Wi-Fi.");
-    return;                             // Abort function if Wi-Fi connection failed
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("\n❌ Failed to connect to Wi-Fi. Continuing without Wi-Fi...");
+    return;  // 🚫 No Wi-Fi. Don't crash. Continue program
   }
 
-  // Set up NTP (Network Time Protocol) client to fetch UTC time
+  Serial.println("\n✅ Wi-Fi connected!");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  // Now try to set time using NTP
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
-  struct tm timeinfo;                  // Structure to hold calendar time (year, month, day, etc.)
-  int ntpRetries = 0;                  // Initialize NTP time fetch retry counter
-  const int ntpMaxRetries = 20;         // Maximum retries for NTP sync
+  Serial.println("🌐 Waiting for NTP time sync...");
 
-  // Wait until ESP32 fetches time from NTP or retries are exhausted
-  Serial.println("Waiting for NTP time sync...");  // Print once before starting loop
+  struct tm timeinfo;
+  const int ntpMaxRetries = 20;
+  int ntpRetries = 0;
 
   while (!getLocalTime(&timeinfo) && ntpRetries < ntpMaxRetries) {
-      Serial.print(".");          // Print a dot each retry
-      Serial.flush();             // Immediately push out the dot to Serial Monitor
-      delay(500);                 // Wait 500 ms
-      ntpRetries++;
+    Serial.print(".");
+    delay(500);
+    ntpRetries++;
   }
 
-  // Check if NTP sync was successful
   if (ntpRetries >= ntpMaxRetries) {
-    Serial.println("⚠️ Failed to sync time from NTP server!");
-    return;                             // Abort function if time sync failed
+    Serial.println("\n⚠️ Failed to sync time from NTP after retries. Using RTC only (if available).");
+    return;
   }
 
-  // Successfully got time! Retrieve it as UNIX timestamp
+  // NTP sync successful
   time_t now;
-  time(&now);                           // Get current time as seconds since Jan 1, 1970
+  time(&now);
 
-  Serial.println("✅ Current Unix time:");
-  Serial.println(now);                  // Print the UNIX timestamp
+  Serial.println("\n✅ Current Unix time:");
+  Serial.println(now);
 }

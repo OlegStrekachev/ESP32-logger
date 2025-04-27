@@ -1,53 +1,55 @@
-
-// I2C debugger - logs all I2C devices connected to ESP32
-// #include <Wire.h>
-// #include <Arduino.h>  // 🔁 Required in PlatformIO!
-// #include "RTClib.h"  // Adafruit's RTClib
-
-
-
-// void setup() {
-//   Serial.begin(9600);
-
-
-//   for (byte addr = 1; addr < 127; addr++) {
-//     Wire.beginTransmission(addr);
-//     if (Wire.endTransmission() == 0) {
-//       Serial.print("✅ Found I2C device at 0x");
-//       Serial.println(addr, HEX);
-//     }
-//   }
-
-//   Serial.println("Done.");
-// }
-
-// void loop() {}
-// I2C Debugger End
-
-
 #include "wifi.h"
 #include "dht.h"
 #include "rtc.h"
-#include "eeprom.h"
+#include "timezone.h"
+#include "eeprom_logger.h"  //  Correct file name now
 #include <Arduino.h>
+#include "web_server.h"  // ✅ NEW
+
+
+
+
 
 // function declarations
 // int myFunction(int, int);
 
+
+bool rtcOk = false;    //  Global tracker
+
+
+void printTimestamp() {
+  if (!rtcOk) {
+    Serial.print("[No RTC] ");
+    return;
+  }
+
+  DateTime now = getTimestamp();  // Get UTC from RTC
+  printLocalTimestamp(now);       //  Convert & print in Mountain Time
+}
+
+
 void setup() {
+   delay(500);               // ⏳ Give Serial time to settle after reset
   Serial.begin(115200);
+  Serial.println("====================");
+  Serial.println("🌎 ESP32 Weather Logger Booting...");
+  Serial.println("====================");
+
 
 
   Wire.begin(21, 22);  // ESP32 I2C pins
+
   Serial.println("I2C Scanner");
 
   for (byte addr = 1; addr < 127; addr++) {
     Wire.beginTransmission(addr);
     if (Wire.endTransmission() == 0) {
+  
       Serial.print("✅ Found I2C device at 0x");
       Serial.println(addr, HEX);
     }
   }
+
 
   Serial.println("Done.");
 
@@ -56,20 +58,36 @@ void setup() {
 
   delay(100);            // Allow Serial to stabilize
   Serial.flush();        // Flush any garbage from the buffer
-  initWiFi();      // Connects to WiFi (used by RTC sync)
-  // initDHT();       // Initializes DHT sensor
-  syncRTCWithNTP();       // ❗ Required to init & sync DS3231 RTC
 
-  // int result = myFunction(2, 3);
-  // Serial.println(result);
+  rtcOk = rtc.begin();
+
+  if (!rtcOk) {    // ✅ NEW: initialize RTC
+    Serial.println("❌ Couldn't find RTC! Check wiring.");
+    while (true);         // Stop forever if no RTC
+  }
+
+  initWiFi();      // Connects to WiFi (used by RTC sync)
+  startWebServer();
+  initDHT();       // Initializes DHT sensor
+  initEEPROMLogger();  // ✅ No need to check return value, we stop inside if EEPROM fails
+
+if (rtc.lostPower()) {
+  Serial.println("⚠️ RTC lost power, syncing with NTP...");
+  syncRTCWithNTP();   // ✅ FIRST sync
+  printTimestamp();   // ✅ AFTER sync, print
+} else {
+  printTimestamp();   // ✅ Safe because RTC time is good
+  Serial.println("✅ RTC time valid, no need for NTP sync.");
+}
+
+
 }
 
 void loop() {
-  // printDHTValues();  // Uses getTimestamp() internally
-  // delay(2000);
+  handleClient();  // ✅ NEW
+  printDHTValues();  // Uses getTimestamp() internally
+  trySaveSensorReading();  // ✅ Save to EEPROM every minute
+  delay(2000);             // Wait 2 seconds
 }
 
-// simple test function
-// int myFunction(int x, int y) {
-//   return x + y;
-// }
+
