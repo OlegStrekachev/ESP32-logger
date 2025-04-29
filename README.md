@@ -78,13 +78,23 @@ Update Table on Web Page
 
 - ESP32 serves a simple Bootstrap page.
 - Browser immediately sends a request to `/data`.
-- The last **5 logged sensor readings** are retrieved from **EEPROM** and displayed.
 
 ### Auto Refresh:
 
-- Every **5 seconds**, the browser fetches the **latest log entry**.
-- New entries appear at the **top**; older entries **shift downward**.
-- A maximum of **10 entries** are shown at once (oldest entries are deleted dynamically).
+| Event                             | How it happens                                         |
+|:----------------------------------|:-------------------------------------------------------|
+| ESP32 saves sensor data into EEPROM | Inside `loop()`, every minute (using `trySaveSensorReading()`) |
+| Browser sends a request to `/data`  | Browser JavaScript **fetches `/data` every 5 seconds** |
+| ESP32's WebServer calls `handleData()` automatically | Whenever it **receives** an HTTP GET `/data` request |
+| `handleData()` reads EEPROM logs and sends JSON back | ✅ |
+
+### Key Trigger:
+| Action                     | Trigger                                                  |
+|:----------------------------|:---------------------------------------------------------|
+| Save DHT sensor to EEPROM   | ESP32 internal timer (`trySaveSensorReading()`)           |
+| Send data to web page       | **Browser HTTP GET request to `/data`**, handled by server |
+
+
 
 ---
 
