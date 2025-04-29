@@ -50,19 +50,25 @@ ESP32 Boot
   ↓
 Connect to Wi-Fi
   ↓
-Initialize RTC → If RTC lost power → Sync to NTP
+Initialize RTC → If RTC lost power → Sync time using NTP
   ↓
 Initialize EEPROM
   ↓
 Start Web Server (Local Browser Access)
   ↓
-Every 1 Minute
-  ↓
-  Read DHT11 → Save Temperature, Humidity, Timestamp into EEPROM
+Every 1 Minute:
+    ↓
+  Read DHT11 Sensor
+    ↓
+  Generate Log Entry (Temperature, Humidity, Timestamp)
+    ↓
+  Write Log Entry to EEPROM
   ↓
 Web Dashboard (HTML + JavaScript)
   ↓
-Request [GET /data] → Fetch Last 5 Entries → Update Table
+Client Requests [GET /data]
+  ↓
+Update Table on Web Page
 
 ```
 
@@ -93,7 +99,7 @@ Request [GET /data] → Fetch Last 5 Entries → Update Table
 
 ---
 
-### 📋 Data Extraction
+### 📋 Data Extraction (work in progress)
 
 You can recover **all stored data** (not just the last 5 entries) by:
 
