@@ -84,18 +84,14 @@ void handleData() {
 
     // Format timestamp into readable local time
     DateTime dt(entry.timestamp);
-    char buffer[32];
-    sprintf(buffer, "%04d-%02d-%02d %02d:%02d:%02d",
-            dt.year(), dt.month(), dt.day(),
-            dt.hour() - 7 < 0 ? dt.hour() + 17 : dt.hour() - 7,  // Adjust for timezone
-            dt.minute(), dt.second());
+    String timestampStr = getLocalTimestampString(dt);  // Use smart timezone handling!
 
     // Add comma if not the first element
     if (i > 0) json += ",";
 
     // Append one log as JSON object
     json += "{";
-    json += "\"time\":\"" + String(buffer) + "\",";
+    json += "\"time\":\"" + timestampStr + "\",";
     json += "\"temperature\":" + String(entry.temperature, 1) + ",";
     json += "\"humidity\":" + String(entry.humidity, 1);
     json += "}";

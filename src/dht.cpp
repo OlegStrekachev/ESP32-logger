@@ -22,10 +22,10 @@ void printDHTValues() {
   if (!isnan(temp) && !isnan(hum)) {
     DateTime now = getTimestamp();   // Get current UTC timestamp from RTC
 
-    printLocalTimestamp(now);         // Print timestamp adjusted to Mountain Time
+    printLocalTimestamp(now);
     Serial.printf("🌡 Temp: %.1f °C | 💧 Humidity: %.1f %%\n", temp, hum);
 
-    // 🔥 Here you can ALSO call saveToEEPROM(now, temp, hum); later
+
   } else {
     Serial.println("⚠️ Failed to read from DHT sensor");
   }

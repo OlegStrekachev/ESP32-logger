@@ -1,19 +1,21 @@
-#include <Arduino.h>
-#include <RTClib.h>
-#include "timezone.h"
+// timezone.cpp
 
-// Determine if DST is active
+#include "timezone.h"
+#include <Arduino.h>    // Needed for Serial.print and String
+#include <RTClib.h>     // Needed for DateTime class
+
+// --- Determine if DST is active for Mountain Time (US rules) ---
 bool isDST(int year, int month, int day, int hour) {
-  if (month < 3 || month > 11) return false;
-  if (month > 3 && month < 11) return true;
+  if (month < 3 || month > 11) return false;  // January, February, December → standard time
+  if (month > 3 && month < 11) return true;   // April to October → DST active
 
   int weekday;
-  if (month == 3) {
+  if (month == 3) {  // March
     weekday = (5 + year + year/4 - year/100 + year/400) % 7;
     int secondSunday = 14 - weekday;
     return (day > secondSunday) || (day == secondSunday && hour >= 2);
   }
-  if (month == 11) {
+  if (month == 11) { // November
     weekday = (2 + year + year/4 - year/100 + year/400) % 7;
     int firstSunday = 7 - weekday;
     return (day < firstSunday) || (day == firstSunday && hour < 2);
@@ -21,7 +23,8 @@ bool isDST(int year, int month, int day, int hour) {
   return false;
 }
 
-void printLocalTimestamp(const DateTime& utcTime) {
+// --- Return local timestamp as a String ---
+String getLocalTimestampString(const DateTime& utcTime) {
   int year = utcTime.year();
   int month = utcTime.month();
   int day = utcTime.day();
@@ -34,6 +37,7 @@ void printLocalTimestamp(const DateTime& utcTime) {
 
   int localHour = hour + offsetHours;
 
+  // Handle rollover across day boundaries
   if (localHour < 0) {
     localHour += 24;
     DateTime yesterday = utcTime - TimeSpan(1, 0, 0, 0);
@@ -48,7 +52,17 @@ void printLocalTimestamp(const DateTime& utcTime) {
     day = tomorrow.day();
   }
 
-  Serial.printf("[%04d-%02d-%02d %02d:%02d:%02d] ",
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d",
     year, month, day,
     localHour, minute, second);
+
+  return String(buffer);
+}
+
+// --- Print local timestamp directly to Serial Monitor ---
+void printLocalTimestamp(const DateTime& utcTime) {
+  Serial.print("[");
+  Serial.print(getLocalTimestampString(utcTime));  // Reuse smart function
+  Serial.print("] ");
 }
